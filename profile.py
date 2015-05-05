@@ -75,10 +75,10 @@ class Canvas(object):
 
 class Profile(object):
 
-    def __init__(self, energies, positions, canvas):
+    def __init__(self, energies, canvas, positions=None):
         self._energies = energies
-        self._positions = positions
         self._canvas = canvas
+        self._positions = positions or list(range(len(self._energies)))
 
         self._bars = []
         for e, p in zip(self._energies, self._positions):
