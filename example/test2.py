@@ -21,15 +21,21 @@ canvas.add_profiles(e)
 
 # General bar and leap options
 canvas.set_bar_style(linewidth=3.0)
-canvas.set_leap_style(linestyle=':')
+canvas.set_leap_style(linestyle='--')
 
 # Top energies are printed
 canvas.set_topenergies()
+canvas.profiles[0].set_bottomlabels(['a', 'TS', 'b'])
 # Make labels the same colour as the bars
 canvas.match_labels()
 # Adjust size a little bit
-canvas.set_energy_scale(-5, 210)
+canvas.set_energy_scale(-50, 220)
 canvas.set_size(3, 1)
+
+# Add some text right under the second bar
+xtxt, ytxt = canvas.profiles[0].bars[1].get_middle()
+canvas.ax.text(xtxt, -25, 'from Gaussian\noutput files',
+               horizontalalignment='center', fontsize=8, color='#CCCCCC')
 
 # Over and out
 canvas.save('test2.pdf')
