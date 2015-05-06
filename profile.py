@@ -2,8 +2,9 @@ import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
 from matplotlib.text import Text
 from matplotlib.transforms import offset_copy
-from mpl_toolkits.axes_grid.axislines import Subplot
 from matplotlib import rc
+from mpl_toolkits.axes_grid.axislines import Subplot
+import numpy as np
 
 
 def _set_property(line, prop, value):
@@ -12,6 +13,11 @@ def _set_property(line, prop, value):
         set_prop(value)
     except AttributeError:
         print('Error: property %s not defined' % prop)
+
+
+def _del(lst, *pargs):
+    for i in pargs:
+        lst[i].remove()
 
 
 class Canvas(object):
@@ -23,6 +29,8 @@ class Canvas(object):
         self.ax = Subplot(self.fig, 111)
         self.fig.add_subplot(self.ax)
         self.fig.set_size_inches(5, 3)
+
+        self.profiles = []
 
         # All axes off by default
         for side in ['left', 'right', 'top', 'bottom']:
@@ -36,6 +44,10 @@ class Canvas(object):
             rc('font', **{'family': 'serif', 'serif': ['Computer Modern']})
             rc('text', usetex=True)
 
+    def add_profiles(self, energies):
+        for i, e in energies.iterrows():
+            self.profiles.append(Profile(energies=e, canvas=self))
+
     def barpos(self, i):
         start = self.space + i * (self.width + self.space)
         return (start, start + self.width)
@@ -43,11 +55,50 @@ class Canvas(object):
     def offset(self, x, y):
         return offset_copy(self.ax.transData, x=x, y=y, units='dots')
 
+    def getprofiles(self):
+        return self.profiles
+
+    def set_bar_style(self, **kwargs):
+        for p in self.profiles:
+            p.set_bar_style(**kwargs)
+
+    def set_leap_style(self, **kwargs):
+        for p in self.profiles:
+            p.set_leap_style(**kwargs)
+
+    def set_line_style(self, **kwargs):
+        for p in self.profiles:
+            p.set_line_style(**kwargs)
+
+    def set_label_style(self, **kwargs):
+        for p in self.profiles:
+            p.set_label_style(**kwargs)
+
+    def set_topenergies(self, *pargs, **kwargs):
+        for p in self.profiles:
+            p.set_topenergies(*pargs, **kwargs)
+
+    def set_bottomenergies(self, *pargs, **kwargs):
+        for p in self.profiles:
+            p.set_bottomenergies(*pargs, **kwargs)
+
     def set_size(self, w, h):
         self.fig.set_size_inches(w, h)
 
     def set_energy_scale(self, emin, emax):
         self.ax.set_ylim(emin, emax)
+
+    def match_toplabels(self):
+        for p in self.profiles:
+            p.match_toplabels()
+
+    def match_bottomlabels(self):
+        for p in self.profiles:
+            p.match_bottomlabels()
+
+    def match_labels(self):
+        self.match_toplabels()
+        self.match_bottomlabels()
 
     def save(self, filename, transparent=True, format='pdf'):
         # TODO otherwise no output at all, better solution?
@@ -74,28 +125,35 @@ class Canvas(object):
 
 
 class Profile(object):
+    # explain why profile and canvas can be accessed as attributes
+    # and others have set/get functions
 
-    def __init__(self, energies, canvas, positions=None):
-        self._energies = energies
+    # def __init__(self, energies, canvas, positions=None):
+    def __init__(self, energies, canvas):
+        self._energies = []
+        self._positions = []
+        for i, e in enumerate(energies):
+            if not np.isnan(e):
+                self._energies.append(e)
+                self._positions.append(i)
         self._canvas = canvas
-        self._positions = positions or list(range(len(self._energies)))
 
-        self._bars = []
+        self.bars = []
         for e, p in zip(self._energies, self._positions):
-            self._bars.append(Bar(e, p, self._canvas))
+            self.bars.append(Bar(e, p, self._canvas))
 
-        self._leaps = []
-        for i, bar in enumerate(self._bars):
+        self.leaps = []
+        for i, bar in enumerate(self.bars):
             try:
-                self._leaps.append(Leap(bar, self._bars[i+1], self._canvas))
+                self.leaps.append(Leap(bar, self.bars[i+1], self._canvas))
             except IndexError:
                 pass
 
         self._len = len(self._energies)
         self._min = min(self._energies)
         self._max = max(self._energies)
-        self._toplabels = []
-        self._bottomlabels = []
+        self.toplabels = []
+        self.bottomlabels = []
 
     def __len__(self):
         return self._len
@@ -105,15 +163,15 @@ class Profile(object):
         min(profile) will return Bar with minimal energy,
         et vice versa for max(profile)
         '''
-        return iter(self._bars)
+        return iter(self.bars)
 
     def set_bar_style(self, **kwargs):
-        for bar in self._bars:
+        for bar in self.bars:
             for prop, val in kwargs.items():
                 _set_property(bar, prop, val)
 
     def set_leap_style(self, **kwargs):
-        for leap in self._leaps:
+        for leap in self.leaps:
             for prop, val in kwargs.items():
                 _set_property(leap, prop, val)
 
@@ -121,27 +179,33 @@ class Profile(object):
         self.set_bar_style(**kwargs)
         self.set_leap_style(**kwargs)
 
-    def set_toplabels(self, labels, offset=5, *pargs, **kwargs):
-        for label, bar in zip(labels, self._bars):
-            self._toplabels.append(Label(label=label, bar=bar,
-                                         canvas=self._canvas,
-                                         offset=(0, offset), *pargs, **kwargs))
+    def set_toplabels(self, labels, offset=3, *pargs, **kwargs):
+        for label, bar in zip(labels, self.bars):
+            self.toplabels.append(Label(label=label, bar=bar,
+                                        canvas=self._canvas,
+                                        offset=(0, offset), *pargs, **kwargs))
 
-    def set_bottomlabels(self, labels, offset=5, *pargs, **kwargs):
-        for label, bar in zip(labels, self._bars):
-            self._bottomlabels.append(Label(label=label, bar=bar,
-                                            canvas=self._canvas,
-                                            verticalalignment='top',
-                                            offset=(0, -offset), *pargs,
-                                            **kwargs))
+    def set_bottomlabels(self, labels, offset=3, *pargs, **kwargs):
+        for label, bar in zip(labels, self.bars):
+            self.bottomlabels.append(Label(label=label, bar=bar,
+                                           canvas=self._canvas,
+                                           verticalalignment='top',
+                                           offset=(0, -offset), *pargs,
+                                           **kwargs))
+
+    def set_topenergies(self, *pargs, **kwargs):
+        self.set_toplabels(['energy'] * self._len, *pargs, **kwargs)
+
+    def set_bottomenergies(self, *pargs, **kwargs):
+        self.set_bottomlabels(['energy'] * self._len, *pargs, **kwargs)
 
     def set_toplabel_style(self, **kwargs):
-        for label in self._toplabels:
+        for label in self.toplabels:
             for prop, val in kwargs.items():
                 _set_property(label, prop, val)
 
     def set_bottomlabel_style(self, **kwargs):
-        for label in self._bottomlabels:
+        for label in self.bottomlabels:
             for prop, val in kwargs.items():
                 _set_property(label, prop, val)
 
@@ -149,23 +213,39 @@ class Profile(object):
         self.set_toplabel_style(**kwargs)
         self.set_bottomlabel_style(**kwargs)
 
-    def get_bars(self):
-        return self._bars
+    def match_toplabels(self):
+        for i, l in enumerate(self.toplabels):
+            l.set_color(self.bars[i].get_color())
 
-    def get_leaps(self):
-        return self._leaps
+    def match_bottomlabels(self):
+        for i, l in enumerate(self.bottomlabels):
+            l.set_color(self.bars[i].get_color())
+
+    def match_labels(self):
+        self.match_toplabels()
+        self.match_bottomlabels()
+
+    def del_bars(self, *pargs):
+        _del(self.bars, *pargs)
+
+    def del_leaps(self, *pargs):
+        _del(self.leaps, *pargs)
+
+    def del_toplabels(self, *pargs):
+        _del(self.toplabels, *pargs)
+
+    def del_bottomlabels(self, *pargs):
+        _del(self.bottomlabels, *pargs)
+
+    def del_labels(self, *pargs):
+        _del(self.toplabels, *pargs)
+        _del(self.bottomlabels, *pargs)
 
     def get_lines(self):
-        return self._bars + self._leaps
-
-    def get_toplabels(self):
-        return self._toplabels
-
-    def get_bottomlabels(self):
-        return self._bottomlabels
+        return self.bars + self.leaps
 
     def get_labels(self):
-        return self._toplabels + self._bottomlabels
+        return self.toplabels + self.bottomlabels
 
     def get_min_energy(self):
         return self._min
