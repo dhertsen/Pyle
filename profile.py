@@ -55,9 +55,6 @@ class Canvas(object):
     def offset(self, x, y):
         return offset_copy(self.ax.transData, x=x, y=y, units='dots')
 
-    def getprofiles(self):
-        return self.profiles
-
     def set_bar_style(self, **kwargs):
         for p in self.profiles:
             p.set_bar_style(**kwargs)
@@ -128,7 +125,6 @@ class Profile(object):
     # explain why profile and canvas can be accessed as attributes
     # and others have set/get functions
 
-    # def __init__(self, energies, canvas, positions=None):
     def __init__(self, energies, canvas):
         self._energies = []
         self._positions = []
@@ -212,6 +208,10 @@ class Profile(object):
     def set_label_style(self, **kwargs):
         self.set_toplabel_style(**kwargs)
         self.set_bottomlabel_style(**kwargs)
+
+    def set_style(self, **kwargs):
+        self.set_label_style(**kwargs)
+        self.set_line_style(**kwargs)
 
     def match_toplabels(self):
         for i, l in enumerate(self.toplabels):
