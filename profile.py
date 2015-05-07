@@ -7,37 +7,65 @@ from mpl_toolkits.axes_grid.axislines import Subplot
 import numpy as np
 
 
-def _set_property(line, prop, value):
+def _set_property(obj, prop, value):
+    '''
+    Set property of :class:`Leap`, :class:`Bar` of :class:`Label`
+    by calling obj.set_prop(value).
+    '''
     try:
-        set_prop = getattr(line, 'set_%s' % prop)
+        set_prop = getattr(obj, 'set_%s' % prop)
         set_prop(value)
     except AttributeError:
         print('Error: property %s not defined' % prop)
 
 
 def _del(lst, *pargs):
+    '''
+    In a list of :class:`Leap`, :class:`Bar` of :class:`Label`, remove elements
+    with indices ``*pargs`` from the plot. Does not remove them from the list,
+    so no index issues!
+    '''
+
     for i in pargs:
         lst[i].remove()
 
 
 class Canvas(object):
 
-    def __init__(self, width=3, space=2, tex=True):
+    def __init__(self, barwidth=3, barspace=2, tex=True):
+        '''
+        Canvas used for all drawings.
+
+        Arguments:
+            barwidth
+                width of the bars
+            barspace
+                space between the bars, i.e. the horizontal length
+                of the leaps
+            tex
+                use tex to render all labels
+        '''
 
         # Initializing the plots
         self.fig = plt.figure(1, (3, 3))
+        '''``matplotlib.figure.Figure`` used for plotting'''
         self.ax = Subplot(self.fig, 111)
+        '''``matplotlib.axis.Axis`` used for plotting'''
         self.fig.add_subplot(self.ax)
         self.fig.set_size_inches(5, 3)
 
+        # Add profiles seperately after initialization of Canvas
         self.profiles = []
+        '''list of profiles, i.e. instances of ``Profile``'''
 
         # All axes off by default
         for side in ['left', 'right', 'top', 'bottom']:
             self.ax.axis[side].set_visible(False)
 
-        self.width = width
-        self.space = space
+        self.barwidth = barwidth
+        '''width of a bar'''
+        self.barspace = barspace
+        '''space between bars, i.e. horizontal length of leaps'''
 
         # Use tex for text font and rendering
         if tex:
@@ -45,14 +73,37 @@ class Canvas(object):
             rc('text', usetex=True)
 
     def add_profiles(self, energies):
+        '''
+        Add profiles to canvas. Energies are in a :class:`pandas.DataFrame`
+        with one profile per row and columns corresponding to bars. ``NaN``
+        values indicate skipped bars.
+        '''
         for i, e in energies.iterrows():
             self.profiles.append(Profile(energies=e, canvas=self))
 
     def barpos(self, i):
-        start = self.space + i * (self.width + self.space)
-        return (start, start + self.width)
+        '''
+        Return the absolute ``(x_begin, x_end)`` position of the ith bar.
+
+        Arguments:
+            i
+                number of the bar
+        '''
+        start = self.barspace + i * (self.barwidth + self.barspace)
+        return (start, start + self.barwidth)
 
     def offset(self, x, y):
+        '''
+        Returns an offset transform which can be based to text and line
+        constructors to shift the label ``(x, y)`` with respect to the
+        correspoding bar.
+
+        Arguments:
+            x
+                horizontal offset
+            y
+                vertical offset
+        '''
         return offset_copy(self.ax.transData, x=x, y=y, units='dots')
 
     def set_bar_style(self, **kwargs):
