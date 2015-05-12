@@ -1,8 +1,8 @@
 try:
-    from gaupy.log import LOGFile
+    from gaupy.utils import energy
 except ImportError:
     print('GauPy module not available')
 
 
 def gaussian(filename, type='gibbs'):
-    return getattr(LOGFile(filename), type)
+    return energy(filename, type=type)
