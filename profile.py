@@ -5,6 +5,7 @@ from matplotlib.transforms import offset_copy
 from matplotlib import rc
 from mpl_toolkits.axes_grid.axislines import Subplot
 import numpy as np
+import logging
 
 
 def _set_property(obj, prop, value):
@@ -148,6 +149,17 @@ class Canvas(object):
         self.match_toplabels()
         self.match_bottomlabels()
 
+    def minimum(self):
+        return min([p._min for p in self.profiles])
+
+    def maximum(self):
+        return max([p._max for p in self.profiles])
+
+    def set_margin(self, margin):
+        d = (self.maximum() - self.minimum()) * margin
+        self.set_energy_scale(self.minimum() - d,
+                              self.maximum() + d)
+
     def save(self, filename, transparent=True, format='pdf'):
         # TODO otherwise no output at all, better solution?
         self.ax.plot()
@@ -177,6 +189,7 @@ class Profile(object):
     # and others have set/get functions
 
     def __init__(self, energies, canvas):
+        logging.debug('profile.Profile.__init__()')
         self._energies = []
         self._positions = []
         for i, e in enumerate(energies):

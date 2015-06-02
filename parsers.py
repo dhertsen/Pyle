@@ -1,5 +1,5 @@
 try:
-    from gaupy.utils import energy
+    from gaupy.log import energy
 except ImportError:
     print('GauPy module not available')
 

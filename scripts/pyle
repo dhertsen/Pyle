@@ -1,47 +1,75 @@
 #! /usr/bin/python
-import pyle.profile as prof
-import pyle.energetics as ener
-from pandas import DataFrame
-
+from pyle.profile import Canvas
+from pyle.energetics import Energies
 from ConfigParser import SafeConfigParser
 from argparse import ArgumentParser
+import logging
 
 parser = ArgumentParser('Write a simple energetic profile')
-parser.add_argument('pdf', help='plotted profile (PDF)')
-parser.add_argument('--csv', '-c', help='energies and/or filenames (CSV)')
+parser.add_argument('--output', '-o', help='plotted profile (PDF)')
+parser.add_argument('--csv', '-c', action='append',
+                    help='energies and/or filenames (CSV)')
 parser.add_argument('--style', '-s', help='style file')
 parser.add_argument('--example', '-x', help='write an example style file')
 parser.add_argument('--profile', '-p', nargs='*', action='append',
                     help='add a profile (energies and/or filenames')
+parser.add_argument('--debug', help='print debug information',
+                    action='store_true')
 args = parser.parse_args()
 
-energies = DataFrame()
-if args.csv:
-    energies = energies.append(ener.parse(ener.csv(args.csv)))
+if args.debug:
+    logging.basicConfig(level='DEBUG', format='%(asctime)s %(message)s')
+
+# Get the energies from a CSV or arguments
+energies = Energies()
+# if args.csv:
+for csv in args.csv:
+    # TODO multiple CSV files possible
+    csv_energies = Energies.from_csv(csv).parse()
+    energies = energies.append(csv_energies)
 if args.profile:
-    energies = energies.append(ener.parse(DataFrame(args.profile)))
+    prof_energies = Energies(args.profile).parse()
+    energies = energies.append(prof_energies)
 
-if args.style:
-    defaults = {'barlength': '3.0', 'space': '2.0', 'usetex': 'True',
-                'barstyle': '-', 'barwidth': '3.0',
-                'leapstyle': ':', 'leapwidth': '1.0',
-                'toplabels': '', 'bottomlabels': '',
-                'fontsize': '12.0', 'width': '0', 'height': '0'}
+# Defaults for global options
+defaults = {'barwidth': '3.0', 'barspace': '2.0', 'usetex': 'True',
+            'barstyle': '-', 'barthickness': '3.0',
+            'leapstyle': ':', 'leapthickness': '1.0',
+            'toplabels': 'energy', 'bottomlabels': '',
+            'fontsize': '12.0', 'width': '0', 'height': '0',
+            'margin': '0.1'}
 
-    scp = SafeConfigParser(defaults)
-    scp.read(args.style)
+# If not only a sample style file is wanted
+if args.output:
 
-    canvas = prof.Canvas(width=scp.getfloat('global', 'barlength'),
-                         space=scp.getfloat('global', 'space'),
-                         tex=scp.getboolean('global', 'usetex'))
+    # Initiate the config parser
+    scp = SafeConfigParser(defaults, allow_no_value=True)
 
+    # Read the style file and pick the 'global' section as section for global
+    # options.
+    if args.style:
+        scp.read(args.style)
+        sec = 'global'
+
+    # ... or pick them directly from the defaults dictionary if no style file
+    # was specified.
+    else:
+        sec = 'DEFAULT'
+
+    # The canvas will be used to plot everything. Set up the grid system by
+    # specifying the width of and the space between bars.
+    canvas = Canvas(barwidth=scp.getfloat(sec, 'barwidth'),
+                    barspace=scp.getfloat(sec, 'barspace'),
+                    tex=scp.getboolean(sec, 'usetex'))
+
+    # Add the profiles and set profile-wide styles for bars and leaps.
     canvas.add_profiles(energies)
+    canvas.set_bar_style(linestyle=scp.get(sec, 'barstyle'))
+    canvas.set_bar_style(linewidth=scp.getfloat(sec, 'barthickness'))
+    canvas.set_leap_style(linestyle=scp.get(sec, 'leapstyle'))
+    canvas.set_leap_style(linewidth=scp.getfloat(sec, 'leapthickness'))
 
-    canvas.set_bar_style(linestyle=scp.get('global', 'barstyle'))
-    canvas.set_bar_style(linewidth=scp.getfloat('global', 'barwidth'))
-    canvas.set_leap_style(linestyle=scp.get('global', 'leapstyle'))
-    canvas.set_leap_style(linewidth=scp.getfloat('global', 'barwidth'))
-
+    # Function to convert labels
     def labels(i, scpline):
         if scpline.strip() == 'energy':
             return ['energy'] * len(canvas.profiles[i])
@@ -49,43 +77,46 @@ if args.style:
             return [x.strip() if x.strip() != 'none'
                     else '' for x in scpline.split()]
 
+    # Set options per profile.
+    colors = dict()
     for s in scp.sections():
         if 'profile' in s:
             i = int(s.split()[1])
             canvas.profiles[i].set_style(color=scp.get(s, 'color'))
+            colors[i] = scp.get(s, 'color')
             canvas.profiles[i].set_toplabels(
                 labels(i, scp.get(s, 'toplabels')))
             canvas.profiles[i].set_bottomlabels(
                 labels(i, scp.get(s, 'bottomlabels')))
+            canvas.profiles[i].match_labels()
+    colors = [colors.get(k, '') for k in range(len(energies))]
+    print('Plotted energies:')
+    energies.insert(0, 'color', colors)
+    print(energies.reset_index(drop=True).to_string(header=False))
 
-    canvas.set_label_style(fontsize=scp.getfloat('global', 'fontsize'))
-    w, h = scp.getfloat('global', 'width'), scp.getfloat('global', 'height')
+    # Some global options to be set after all the profiles have been added:
+    # label sizes and figure width/height.
+    canvas.set_label_style(fontsize=scp.getfloat(sec, 'fontsize'))
+    w, h = scp.getfloat(sec, 'width'), scp.getfloat(sec, 'height')
     if w and h:
         canvas.set_size(w, h)
     elif w or h:
         print('Both width and height must be specified.')
         print('Ignoring width/height.')
-else:
-    canvas = prof.Canvas()
-    canvas.add_profiles(energies)
-canvas.save(args.pdf)
 
+    # Plot and save everything.
+    canvas.set_margin(scp.getfloat(sec, 'margin'))
+    canvas.save(args.output)
+
+# Write an example style file.
 if args.example:
-    gopt = '''[global]
-barlength: 3
-space: 2
-usetex: yes
-barwidth: 3
-barstyle: -
-leapwidth: 1
-leapstyle: :
-fontsize: 12
-width: 5
-height: 3
-'''
+    gopt = ('[global]\n'
+            + '\n'.join('%s: %s' % (x, y) for x, y in defaults.iteritems()))
     comment = '''
+
 # For text labels use "bottomlabels: a b c".
-# Use none to skip a bar.'''
+# Use none to skip a bar.
+'''
 
     popt_template = '''
 [profile %i]
