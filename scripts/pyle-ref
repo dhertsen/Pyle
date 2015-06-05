@@ -1,0 +1,43 @@
+#! /usr/bin/python
+from pyle.energetics import Energies
+from argparse import ArgumentParser
+import logging
+
+parser = ArgumentParser('Convert energy/filename matrix to relative energies.')
+parser.add_argument('--csv', '-c',
+                    help='CSV file with energies/filenames to scale',
+                    default=[])
+parser.add_argument('--out', '-o', help='CSV file of sum', default='ref.csv')
+
+# Which reference?
+group = parser.add_mutually_exclusive_group(required=True)
+group.add_argument('--index', '-i', nargs='*', type=int,
+                   help='Bar number (minimum per profile) or '
+                   + 'bar and profile number (global minimum). '
+                   + 'Numbering starts at 0!')
+group.add_argument('--minimum', '-m', action='store_true',
+                   help='Minimum reference per profile')
+group.add_argument('--globalminimum', '-g', action='store_true',
+                   help='Global minimum reference')
+
+parser.add_argument('--debug', help='print debug information',
+                    action='store_true')
+args = parser.parse_args()
+
+if args.debug:
+    logging.basicConfig(level='DEBUG', format='%(asctime)s %(message)s')
+
+energies = Energies.from_csv(args.csv).parse()
+print('%s:' % args.csv)
+print(energies)
+
+if args.index:
+    energies = energies.indexref(*args.index)
+elif args.minimum:
+    energies = energies.minref()
+elif args.globalminimum:
+    energies = energies.minref(overall=True)
+
+print('%s:' % args.out)
+print(energies)
+energies.to_csv(args.out)

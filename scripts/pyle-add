@@ -1,0 +1,27 @@
+#! /usr/bin/python
+from pyle.energetics import Energies
+from argparse import ArgumentParser
+import logging
+
+parser = ArgumentParser('Add energy/filename matrices.')
+parser.add_argument('--csv', '-c', nargs='*',
+                    help='CSV files with energies/filenames to add',
+                    default=[])
+parser.add_argument('--out', '-o', help='CSV file of sum', default='sum.csv')
+parser.add_argument('--debug', help='print debug information',
+                    action='store_true')
+args = parser.parse_args()
+
+if args.debug:
+    logging.basicConfig(level='DEBUG', format='%(asctime)s %(message)s')
+
+energies = []
+for c in args.csv:
+    print('%s:' % c)
+    e = Energies.from_csv(c).parse()
+    energies.append(e)
+    print(e)
+print('%s:' % args.out)
+result = sum(energies)
+print(result)
+result.to_csv(args.out)

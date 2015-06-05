@@ -1,0 +1,36 @@
+#! /usr/bin/python
+from pyle.energetics import Energies
+from argparse import ArgumentParser
+from molmod.units import parse_unit
+import logging
+
+parser = ArgumentParser('Multiply energy/filename matrix with scalar.')
+parser.add_argument('--csv', '-c',
+                    help='CSV file with energies/filenames to scale',
+                    default=[])
+parser.add_argument('--scalar', '-s', help='Scalar', type=float, default=1.0)
+parser.add_argument('--unit', '-u',
+                    help='Convert atomic energy unit (Hartree) to '
+                    + 'this unit (\'kjmol\', \'kcalmol\', \'electronvolt\', '
+                    + 'see Molmod documentation)', default=1)
+parser.add_argument('--out', '-o', help='CSV file of sum', default='scale.csv')
+parser.add_argument('--debug', help='print debug information',
+                    action='store_true')
+args = parser.parse_args()
+
+if args.debug:
+    logging.basicConfig(level='DEBUG', format='%(asctime)s %(message)s')
+
+unit = parse_unit(args.unit) ** (-1)
+factor = args.scalar * unit
+unscaled = Energies.from_csv(args.csv).parse()
+scaled = unscaled * factor
+
+print('Scalar: %s' % args.scalar)
+print('Unit: %s %s per Hartree' % (unit, args.unit))
+print('%s:' % args.csv)
+print(unscaled)
+print('%s:' % args.out)
+print(scaled)
+
+scaled.to_csv(args.out)

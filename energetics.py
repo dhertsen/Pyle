@@ -18,10 +18,17 @@ class Energies(DataFrame):
     def _constructor(self):
         return Energies
 
+    def __str__(self):
+        return self.to_string(header=False, index=False)
+
     @classmethod
     def from_csv(self, filename):
         return Energies(super(Energies, self).from_csv(
             filename, header=None, index_col=None))
+
+    def to_csv(self, filename):
+        super(Energies, self).to_csv(filename, header=None, index=False)
+        print('%s written' % filename)
 
     def parse(self, parser=parsers.gaussian, *pargs, **kwargs):
         '''
@@ -38,7 +45,6 @@ class Energies(DataFrame):
 
     def minref(self, overall=False):
         if overall:
-            # TODO Really? No shortcut?
             return self - self.min().min(axis=1)
         else:
             return self.subtract(self.min(axis=1), axis=0)
