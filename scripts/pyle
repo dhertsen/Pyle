@@ -15,6 +15,8 @@ parser.add_argument('--profile', '-p', nargs='*', action='append',
                     help='add a profile (energies and/or filenames')
 parser.add_argument('--debug', help='print debug information',
                     action='store_true')
+parser.add_argument('--pickle',
+                    help='binary file to store canvas for further use')
 args = parser.parse_args()
 
 if args.debug:
@@ -35,9 +37,9 @@ if args.profile:
 defaults = {'barwidth': '3.0', 'barspace': '2.0', 'usetex': 'True',
             'barstyle': '-', 'barthickness': '3.0',
             'leapstyle': ':', 'leapthickness': '1.0',
-            'toplabels': 'energy', 'bottomlabels': '',
+            'toplabels': '', 'bottomlabels': '',
             'fontsize': '12.0', 'width': '0', 'height': '0',
-            'margin': '0.1'}
+            'margin': '0.1', 'offset': '3'}
 
 # If not only a sample style file is wanted
 if args.output:
@@ -85,9 +87,11 @@ if args.output:
             canvas.profiles[i].set_style(color=scp.get(s, 'color'))
             colors[i] = scp.get(s, 'color')
             canvas.profiles[i].set_toplabels(
-                labels(i, scp.get(s, 'toplabels')))
+                labels(i, scp.get(s, 'toplabels')),
+                offset=scp.getfloat('global', 'offset'))
             canvas.profiles[i].set_bottomlabels(
-                labels(i, scp.get(s, 'bottomlabels')))
+                labels(i, scp.get(s, 'bottomlabels')),
+                offset=scp.getfloat('global', 'offset'))
             canvas.profiles[i].match_labels()
     colors = [colors.get(k, '') for k in range(len(energies))]
     print('Plotted energies:')
@@ -106,6 +110,8 @@ if args.output:
 
     # Plot and save everything.
     canvas.set_margin(scp.getfloat(sec, 'margin'))
+    if args.pickle:
+        canvas.dump(args.pickle)
     canvas.save(args.output)
 
 # Write an example style file.

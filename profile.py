@@ -3,9 +3,9 @@ from matplotlib.lines import Line2D
 from matplotlib.text import Text
 from matplotlib.transforms import offset_copy
 from matplotlib import rc
-from mpl_toolkits.axes_grid.axislines import Subplot
 import numpy as np
 import logging
+import cPickle as pickle
 
 
 def _set_property(obj, prop, value):
@@ -33,6 +33,11 @@ def _del(lst, *pargs):
 
 class Canvas(object):
 
+    def _tex(self):
+        if self.tex:
+            rc('font', **{'family': 'serif', 'serif': ['Computer Modern']})
+            rc('text', usetex=True)
+
     def __init__(self, barwidth=3, barspace=2, tex=True):
         '''
         Canvas used for all drawings.
@@ -48,20 +53,21 @@ class Canvas(object):
         '''
 
         # Initializing the plots
-        self.fig = plt.figure(1, (3, 3))
+        self.fig = plt.figure()
         '''``matplotlib.figure.Figure`` used for plotting'''
-        self.ax = Subplot(self.fig, 111)
+        self.ax = plt.gca()
         '''``matplotlib.axis.Axis`` used for plotting'''
         self.fig.add_subplot(self.ax)
-        self.fig.set_size_inches(5, 3)
 
         # Add profiles seperately after initialization of Canvas
         self.profiles = []
         '''list of profiles, i.e. instances of ``Profile``'''
 
         # All axes off by default
-        for side in ['left', 'right', 'top', 'bottom']:
-            self.ax.axis[side].set_visible(False)
+        self.ax.axis('off')
+        # Necessary to eliminate whitespace where axes were located
+        self.ax.xaxis.set_major_locator(plt.NullLocator())
+        self.ax.yaxis.set_major_locator(plt.NullLocator())
 
         self.barwidth = barwidth
         '''width of a bar'''
@@ -69,9 +75,22 @@ class Canvas(object):
         '''space between bars, i.e. horizontal length of leaps'''
 
         # Use tex for text font and rendering
-        if tex:
-            rc('font', **{'family': 'serif', 'serif': ['Computer Modern']})
-            rc('text', usetex=True)
+        self.tex = tex
+        self._tex()
+
+    @staticmethod
+    def from_pickle(picklefile):
+        f = open(picklefile)
+        canvas = pickle.load(f)
+        f.close()
+        canvas._tex()
+        return canvas
+
+    def dump(self, picklefile):
+        f = open(picklefile, 'wb')
+        pickle.dump(self, f)
+        print('%s written' % picklefile)
+        f.close()
 
     def add_profiles(self, energies):
         '''
@@ -137,6 +156,12 @@ class Canvas(object):
     def set_energy_scale(self, emin, emax):
         self.ax.set_ylim(emin, emax)
 
+    def horizontal_fit(self):
+        lastbar = max(map(len, self.profiles)) - 1
+        xmax = self.barpos(lastbar)[1]
+        xmin = self.barpos(0)[0]
+        self.ax.set_xlim(xmin, xmax)
+
     def match_toplabels(self):
         for p in self.profiles:
             p.match_toplabels()
@@ -166,22 +191,6 @@ class Canvas(object):
         self.fig.savefig(filename, bbox_inches='tight',
                          transparent=True, format='pdf')
         print('%s written' % filename)
-
-    def toggle_yaxis(self, position='left', label='energy',
-                     labelsize=10, ticklabelsize=10):
-        if position == 'both':
-            positions = ['left', 'right']
-        elif position in ['left', 'right']:
-            positions = [position]
-        else:
-            positions = []
-
-        for p in positions:
-            self.ax.axis[p].set_label(label)
-            self.ax.axis[p].label.set_size(labelsize)
-            self.ax.axis[p].major_ticklabels.set_size(ticklabelsize)
-            self.ax.axis[p].toggle(ticklabels=True, label=True)
-            self.ax.axis[p].set_visible(True)
 
 
 class Profile(object):
