@@ -39,7 +39,8 @@ defaults = {'barwidth': '3.0', 'barspace': '2.0', 'usetex': 'True',
             'leapstyle': ':', 'leapthickness': '1.0',
             'toplabels': '', 'bottomlabels': '',
             'fontsize': '12.0', 'width': '0', 'height': '0',
-            'margin': '0.1', 'offset': '3'}
+            'margin': '0.1', 'offset': '3',
+            'emin': 'None', 'emax': 'None'}
 
 # If not only a sample style file is wanted
 if args.output:
@@ -108,8 +109,16 @@ if args.output:
         print('Both width and height must be specified.')
         print('Ignoring width/height.')
 
+    # Minimum and maximum energy
+    try:
+        emin = scp.getfloat(sec, 'emin')
+        emax = scp.getfloat(sec, 'emax')
+        canvas.set_energy_scale(emin, emax)
+    except:
+        logging.debug('pyle: energy scale could not be set')
+        canvas.set_margin(scp.getfloat(sec, 'margin'))
+
     # Plot and save everything.
-    canvas.set_margin(scp.getfloat(sec, 'margin'))
     if args.pickle:
         canvas.dump(args.pickle)
     canvas.save(args.output)
