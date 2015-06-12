@@ -3,6 +3,7 @@ from pyle.profile import Canvas
 from pyle.energetics import Energies
 from ConfigParser import SafeConfigParser
 from argparse import ArgumentParser
+from subprocess import Popen
 import logging
 
 parser = ArgumentParser('Write a simple energetic profile')
@@ -13,6 +14,7 @@ parser.add_argument('--style', '-s', help='style file')
 parser.add_argument('--example', '-x', help='write an example style file')
 parser.add_argument('--profile', '-p', nargs='*', action='append',
                     help='add a profile (energies and/or filenames')
+parser.add_argument('--crop', help='crop PDF output', action='store_true')
 parser.add_argument('--debug', help='print debug information',
                     action='store_true')
 parser.add_argument('--pickle',
@@ -26,7 +28,6 @@ if args.debug:
 energies = Energies()
 # if args.csv:
 for csv in args.csv:
-    # TODO multiple CSV files possible
     csv_energies = Energies.from_csv(csv).parse()
     energies = energies.append(csv_energies)
 if args.profile:
@@ -122,6 +123,14 @@ if args.output:
     if args.pickle:
         canvas.dump(args.pickle)
     canvas.save(args.output)
+
+    # Try cropping with pdfcrop
+    if args.crop:
+        try:
+            Popen(['pdfcrop --margins 0 %s %s' % (args.output, args.output)],
+                  shell=True).communicate()
+        except:
+            logging.error('Could not crop %s using pdfcrop' % args.output)
 
 # Write an example style file.
 if args.example:

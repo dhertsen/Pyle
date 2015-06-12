@@ -1,0 +1,37 @@
+#! /usr/bin/python
+from pyle.energetics import Energies
+from argparse import ArgumentParser
+from molmod.units import kjmol
+import logging
+
+parser = ArgumentParser('Convert energy/filename matrix to relative energies '
+                        + 'in kJ/mol. Assume that filenames are Gaussian '
+                        + 'calculations, energies are in Ha, the first energy '
+                        + 'of the first profile is used as a reference.')
+parser.add_argument('--csv', '-c', help='CSV file with energies/filenames',
+                    default=[])
+parser.add_argument('--out', '-o', help='CSV file of ouput')
+parser.add_argument('--debug', help='print debug information',
+                    action='store_true')
+args = parser.parse_args()
+
+if args.debug:
+    logging.basicConfig(level='DEBUG', format='%(asctime)s %(message)s')
+
+# Parse energies
+energies = Energies.from_csv(args.csv).parse()
+print('%s (parsed):' % args.csv)
+print(energies)
+
+# Use first element of first profile as reference
+energies = energies.indexref(0, 0)
+print('Relative energies (Ha):')
+print(energies)
+
+# Assume that the energies are provided in Ha and convert them to kJ/mol
+energies /= kjmol
+print('Relative energies (kJ/mol):')
+print(energies)
+
+outfile = args.out or args.csv.replace('.csv', '-auto.csv')
+energies.to_csv(outfile)
