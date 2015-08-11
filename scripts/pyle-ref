@@ -1,5 +1,5 @@
 #! /usr/bin/python
-from pyle.energetics import Energies
+from pyle.energetics import Energies, _energy
 from argparse import ArgumentParser
 import logging
 
@@ -19,6 +19,8 @@ group.add_argument('--minimum', '-m', action='store_true',
                    help='Minimum reference per profile')
 group.add_argument('--globalminimum', '-g', action='store_true',
                    help='Global minimum reference')
+group.add_argument('--absolute', '-a',
+                   help='Absolute number of file as a reference')
 
 parser.add_argument('--debug', help='print debug information',
                     action='store_true')
@@ -37,6 +39,8 @@ elif args.minimum:
     energies = energies.minref()
 elif args.globalminimum:
     energies = energies.minref(overall=True)
+elif args.absolute:
+    energies -= _energy(args.absolute)
 
 print('%s:' % args.out)
 print(energies)

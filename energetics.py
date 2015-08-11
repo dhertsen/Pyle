@@ -2,7 +2,7 @@ import parsers
 from pandas import DataFrame
 
 
-def _energy(value, parser, *pargs, **kwargs):
+def _energy(value, parser=parsers.gaussian, *pargs, **kwargs):
     try:
         return float(value)
     except:
