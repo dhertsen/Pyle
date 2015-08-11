@@ -18,8 +18,8 @@ class Energies(DataFrame):
     def _constructor(self):
         return Energies
 
-    def __str__(self):
-        return self.to_string(header=False, index=False)
+    def __str__(self, index=False):
+        return self.to_string(header=False, index=index, na_rep=' ')
 
     @classmethod
     def from_csv(self, filename):

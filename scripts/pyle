@@ -98,7 +98,7 @@ if args.output:
     colors = [colors.get(k, '') for k in range(len(energies))]
     print('Plotted energies:')
     energies.insert(0, 'color', colors)
-    print(energies.reset_index(drop=True).to_string(header=False))
+    print(energies.reset_index(drop=True))
 
     # Some global options to be set after all the profiles have been added:
     # label sizes and figure width/height.
