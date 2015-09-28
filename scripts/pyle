@@ -1,4 +1,4 @@
-#! /usr/bin/python
+#! /apps/gent/SL6/sandybridge/software/Python/2.7.6-ictce-5.5.0/bin/python2.7
 from pyle.profile import Canvas
 from pyle.energetics import Energies
 from ConfigParser import SafeConfigParser
@@ -26,10 +26,10 @@ if args.debug:
 
 # Get the energies from a CSV or arguments
 energies = Energies()
-# if args.csv:
-for csv in args.csv:
-    csv_energies = Energies.from_csv(csv).parse()
-    energies = energies.append(csv_energies)
+if args.csv:
+    for csv in args.csv:
+        csv_energies = Energies.from_csv(csv).parse()
+        energies = energies.append(csv_energies)
 if args.profile:
     prof_energies = Energies(args.profile).parse()
     energies = energies.append(prof_energies)
