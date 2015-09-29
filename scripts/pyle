@@ -1,4 +1,4 @@
-#! /apps/gent/SL6/sandybridge/software/Python/2.7.6-ictce-5.5.0/bin/python2.7
+#! /usr/bin/env python2.7
 from pyle.profile import Canvas
 from pyle.energetics import Energies
 from ConfigParser import SafeConfigParser
